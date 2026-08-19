@@ -1,0 +1,19 @@
+[project]
+name = "langgraph-notebook"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = [
+    "dotenv>=0.9.9",
+    "grandalf>=0.8",
+    "jupyterlab>=4.6.3",
+    "langchain-deepseek>=1.1.0",
+    "langgraph>=1.2.11",
+    "rich>=15.0.0",
+    "typing-extensions>=4.16.0",
+]
+
+[tool.ruff.lint.per-file-ignores]
+# notebook 中每个 cell 各自 import 是正常写法（保证 cell 可独立运行），跨 cell 重复导入不算问题
+"*.ipynb" = ["F811"]
