@@ -12,3 +12,6 @@ wheels/
 
 # IDE
 .idea/
+
+# Local planning notes
+PLAN.md
