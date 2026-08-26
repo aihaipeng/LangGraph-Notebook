@@ -12,6 +12,7 @@ dependencies = [
     "langchain-deepseek>=1.1.0",
     "langgraph>=1.2.11",
     "rich>=15.0.0",
+    "tavily-python>=0.8.0",
     "typing-extensions>=4.16.0",
 ]
 

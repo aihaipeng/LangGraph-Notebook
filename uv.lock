@@ -968,6 +968,7 @@ dependencies = [
     { name = "langchain-deepseek" },
     { name = "langgraph" },
     { name = "rich" },
+    { name = "tavily-python" },
     { name = "typing-extensions" },
 ]
 
@@ -980,6 +981,7 @@ requires-dist = [
     { name = "langchain-deepseek", specifier = ">=1.1.0" },
     { name = "langgraph", specifier = ">=1.2.11" },
     { name = "rich", specifier = ">=15.0.0" },
+    { name = "tavily-python", specifier = ">=0.8.0" },
     { name = "typing-extensions", specifier = ">=4.16.0" },
 ]
 
@@ -1794,6 +1796,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/28/e3/55dcc2cfbc3ca9c29519eb6884dd1415ecb53b0e934862d3559ddcb7e20b/stack_data-0.6.3.tar.gz", hash = "sha256:836a778de4fec4dcd1dcd89ed8abff8a221f58308462e1c4aa2a3cf30148f0b9", size = 44707, upload-time = "2023-09-30T13:58:05.479Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f1/7b/ce1eafaf1a76852e2ec9b22edecf1daa58175c090266e9f6c64afcd81d91/stack_data-0.6.3-py3-none-any.whl", hash = "sha256:d5558e0c25a4cb0853cddad3d77da9891a08cb85dd9f9f91b9f8cd66e511e695", size = 24521, upload-time = "2023-09-30T13:58:03.53Z" },
+]
+
+[[package]]
+name = "tavily-python"
+version = "0.8.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "httpx" },
+    { name = "requests" },
+    { name = "tiktoken" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/92/c2/dd46d7e44093e710768f0584a9ad290148a215bd40d3f86d27e94a3e6203/tavily_python-0.8.0.tar.gz", hash = "sha256:e9e440df828a70ea9c4390f27778dbdc051159406c9c903bad1e6d8dc7df2fc4", size = 31192, upload-time = "2026-08-24T16:16:13.767Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/da/7b/4d125cd672540a075e20fc5131f039ba93d42d91cfcbd4348e99ad4eab77/tavily_python-0.8.0-py3-none-any.whl", hash = "sha256:c5aaea1dab5daad0e846e8603e54c6b9088cb6da8ce0d474f2114c6940941409", size = 22098, upload-time = "2026-08-24T16:16:12.784Z" },
 ]
 
 [[package]]
