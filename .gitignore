@@ -10,8 +10,10 @@ wheels/
 .venv
 .env
 
-# IDE
+# IDE / tools
 .idea/
+.playwright-mcp/
+.ipynb_checkpoints/
 
 # Local planning notes
 PLAN.md

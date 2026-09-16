@@ -1,0 +1,112 @@
+<mxfile host="127.0.0.1">
+  <diagram id="Hrf6Vje1jEiF1b-ViUoW" name="第 1 页">
+    <mxGraphModel dx="2360" dy="1191" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="s0" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;" value="开始 (START)" vertex="1">
+          <mxGeometry height="44" width="160" x="320" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="llmnode" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;fontStyle=1;startSize=32;rounded=1;" value="llm_node" vertex="1">
+          <mxGeometry height="180" width="400" x="200" y="120" as="geometry" />
+        </mxCell>
+        <mxCell id="llm1" parent="llmnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="读取全部历史消息 state[&quot;messages&quot;]" vertex="1">
+          <mxGeometry height="44" width="360" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="llm2" parent="llmnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="调用 model_with_tools → 得到本轮新生成的 ai_msg" vertex="1">
+          <mxGeometry height="50" width="360" x="20" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="e_llm" edge="1" parent="llmnode" source="llm1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="llm2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="dec1" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;rounded=1;" value="ai_msg.tool_calls&lt;br&gt;是否存在？" vertex="1">
+          <mxGeometry height="110" width="260" x="270" y="340" as="geometry" />
+        </mxCell>
+        <mxCell id="endnode" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=13;fontStyle=1;" value="END / 后续流程" vertex="1">
+          <mxGeometry height="60" width="150" x="-90" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="app1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="追加 ai_msg 到 messages（数据回流）" vertex="1">
+          <mxGeometry height="44" width="220" x="290" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="toolnode" parent="1" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=15;fontStyle=1;startSize=32;rounded=1;" value="tool_node" vertex="1">
+          <mxGeometry height="520" width="440" x="180" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="t1" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="① 取最后一条 AIMessage（它带 tool_calls）" vertex="1">
+          <mxGeometry height="40" width="400" x="20" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="t2" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="② 遍历 tool_calls（逐项消费 name / args / id）" vertex="1">
+          <mxGeometry height="40" width="400" x="20" y="105" as="geometry" />
+        </mxCell>
+        <mxCell id="t3" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="③ 用 name 查映射表定位工具对象（args 仅作执行参数）" vertex="1">
+          <mxGeometry height="40" width="400" x="20" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="dec2" parent="toolnode" style="rhombus;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=12;rounded=1;" value="找到？" vertex="1">
+          <mxGeometry height="70" width="140" x="150" y="220" as="geometry" />
+        </mxCell>
+        <mxCell id="t5a" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=12;" value="tool.invoke(args) → res" vertex="1">
+          <mxGeometry height="48" width="180" x="20" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="t5b" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=12;" value="res = &quot;未知工具xxx&quot;（降级）" vertex="1">
+          <mxGeometry height="48" width="180" x="240" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="t6" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="④ 构造 ToolMessage：content = str(res)，tool_call_id = 该项 id" vertex="1">
+          <mxGeometry height="44" width="400" x="20" y="375" as="geometry" />
+        </mxCell>
+        <mxCell id="t7" parent="toolnode" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#6c8ebf;fontSize=12;" value="⑤ 追加全部 ToolMessage 到 messages（数据回流）" vertex="1">
+          <mxGeometry height="44" width="400" x="20" y="435" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t1t2" edge="1" parent="toolnode" source="t1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="t2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t2t3" edge="1" parent="toolnode" source="t2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="t3">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t3dec2" edge="1" parent="toolnode" source="t3" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="dec2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec2a" edge="1" parent="toolnode" source="dec2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.25;exitY=1;entryX=0.5;entryY=0;fontSize=11;" target="t5a" value="找到">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_dec2b" edge="1" parent="toolnode" source="dec2" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.75;exitY=1;entryX=0.5;entryY=0;fontSize=11;" target="t5b" value="未找到">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t5at6" edge="1" parent="toolnode" source="t5a" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.25;entryY=0;" target="t6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t5bt6" edge="1" parent="toolnode" source="t5b" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.75;entryY=0;" target="t6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_t6t7" edge="1" parent="toolnode" source="t6" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="t7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_start" edge="1" parent="1" source="s0" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="llmnode">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_llmdec" edge="1" parent="1" source="llmnode" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="dec1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_decend" edge="1" parent="1" source="dec1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0;exitY=0.5;entryX=1;entryY=0.5;fontSize=11;" target="endnode" value="不存在（不调用工具）">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_decapp" edge="1" parent="1" source="dec1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;" target="app1" value="存在（调用工具）">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_apptool" edge="1" parent="1" source="app1" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#333333;exitX=0.5;exitY=1;entryX=0.5;entryY=0;fontSize=11;" target="toolnode">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_loop" edge="1" parent="1" source="t7" style="edgeStyle=orthogonalEdgeStyle;rounded=1;html=1;endArrow=classic;strokeColor=#d79b00;fontSize=11;fontStyle=1;exitX=1;exitY=0.5;entryX=1;entryY=0.5;" target="llmnode" value="路由回 llm_node（控制回流）">
+          <mxGeometry relative="1" x="-0.0129" y="-20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="700" y="1017" />
+              <mxPoint x="700" y="210" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="loopnote" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0050ef;strokeColor=#001DBC;fontSize=12;fontStyle=1;dashed=1;fontColor=#ffffff;" value="终止条件：llm_node 某轮不再发起 tool_calls → 走后续流程 / END" vertex="1">
+          <mxGeometry height="80" width="150" x="70" y="462" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="127.0.0.1">
+  <diagram id="rekeFvSNgL-SJXHfxBPc" name="第 1 页">
+    <mxGraphModel dx="2252" dy="1083" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827" background="none" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;fontSize=16;fontStyle=1;fontColor=#0f172a;rounded=1;" value="工具审批流程图（★ 突出审批环节）" vertex="1">
+          <mxGeometry height="26" width="720" x="40" as="geometry" />
+        </mxCell>
+        <mxCell id="b1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#eff6ff;strokeColor=#bfdbfe;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#1e40af;" value="阶段① 首次执行：挂起" vertex="1">
+          <mxGeometry height="440" width="680" x="60" y="26" as="geometry" />
+        </mxCell>
+        <mxCell id="b2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff7ed;strokeColor=#ea580c;strokeWidth=2;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#9a3412;" value="阶段② 人工审批 ★ 核心环节" vertex="1">
+          <mxGeometry height="290" width="680" x="70" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="b3" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f0fdf4;strokeColor=#bbf7d0;verticalAlign=top;align=left;spacingLeft=14;spacingTop=8;fontSize=13;fontStyle=1;fontColor=#166534;" value="阶段③ 恢复：重跑与执行" vertex="1">
+          <mxGeometry height="485" width="680" x="70" y="780" as="geometry" />
+        </mxCell>
+        <mxCell id="n_start" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#334155;fontSize=13;" value="开始：用户消息" vertex="1">
+          <mxGeometry height="40" width="240" x="290" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="n_llm" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#2563eb;strokeWidth=1.5;fontSize=12;" value="llm_node（模型节点）&#xa;读取全部历史 → 调模型得到 ai_msg&#xa;ai_msg 可能携带 tool_calls" vertex="1">
+          <mxGeometry height="80" width="340" x="240" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="n_tool1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#16a34a;strokeWidth=1.5;fontSize=12;" value="tool_node · 阶段一：收齐审批决策&#xa;遍历 ai_msg.tool_calls（可能多个）&#xa;免审批工具 → 放行标记（NEVER_ASK）&#xa;待审批工具 → interrupt(payload)&#xa;payload = { name, args }" vertex="1">
+          <mxGeometry height="115" width="340" x="240" y="240" as="geometry" />
+        </mxCell>
+        <mxCell id="n_int" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fef2f2;strokeColor=#dc2626;dashed=1;dashPattern=6 4;fontSize=12;" value="raise GraphInterrupt&#xa;图挂起 · 状态落盘 · 返回 __interrupt__" vertex="1">
+          <mxGeometry height="68" width="300" x="260" y="380" as="geometry" />
+        </mxCell>
+        <mxCell id="n_appr" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fed7aa;strokeColor=#ea580c;strokeWidth=3;fontSize=12;" value="★ 人 工 审 批 ★&#xa;查看 payload：要调什么工具（name）、什么参数（args）&#xa;决策：① 同意　② 同意并改参数（edit）　③ 拒绝（带原因）&#xa;组装恢复值 → Command(resume=决策值)&#xa;协议：True / {approved, args, reason}（恢复值须显式转 bool）&#xa;⚠ 字符串 &quot;False&quot; 是真值，会被判成同意！" vertex="1">
+          <mxGeometry height="170" width="420" x="200" y="510" as="geometry" />
+        </mxCell>
+        <mxCell id="n_invoke" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffedd5;strokeColor=#ea580c;fontSize=12;" value="graph.invoke(Command(resume=决策), config)" vertex="1">
+          <mxGeometry height="40" width="300" x="260" y="695" as="geometry" />
+        </mxCell>
+        <mxCell id="n_tool2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#16a34a;strokeWidth=1.5;fontSize=12;" value="tool_node 从头重跑（同一 super-step）&#xa;阶段一 interrupt() 按顺序依次返回缓存恢复值&#xa;（不再暂停 —— 工具严格一次执行的基础）" vertex="1">
+          <mxGeometry height="95" width="340" x="240" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="n_dec" parent="1" style="rhombus;whiteSpace=wrap;html=1;fillColor=#fef9c3;strokeColor=#ca8a04;fontSize=12;fontStyle=1;rounded=1;" value="恢复值&#xa;approved？" vertex="1">
+          <mxGeometry height="110" width="180" x="320" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="n_ok" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#16a34a;strokeWidth=1.5;fontSize=12;" value="执行工具：tool.invoke(args)&#xa;args = 恢复值带的新参数（若有）" vertex="1">
+          <mxGeometry height="76" width="250" x="80" y="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="n_no" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#dc2626;strokeWidth=1.5;fontSize=12;" value="不执行，回填拒绝文案：&#xa;用户拒绝执行（reason），请直接回答" vertex="1">
+          <mxGeometry height="76" width="250" x="490" y="1070" as="geometry" />
+        </mxCell>
+        <mxCell id="n_merge" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8fafc;strokeColor=#475569;fontSize=12;" value="ToolMessage 回填（tool_call_id = tc.id）→ Command(goto=llm_node）&#xa;数据回流 + 控制回流 —— 模型看到工具应答 / 拒绝文案，再推理" vertex="1">
+          <mxGeometry height="64" width="500" x="160" y="1185" as="geometry" />
+        </mxCell>
+        <mxCell id="n_end" parent="1" style="rounded=1;arcSize=50;whiteSpace=wrap;html=1;fillColor=#e2e8f0;strokeColor=#334155;fontSize=12;fontStyle=1;" value="END&#xa;纯文本回答" vertex="1">
+          <mxGeometry height="60" width="100" x="770" y="1187" as="geometry" />
+        </mxCell>
+        <mxCell id="e1" edge="1" parent="1" source="n_start" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#334155;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_llm">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e2" edge="1" parent="1" source="n_llm" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#334155;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_tool1">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e3" edge="1" parent="1" source="n_tool1" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#334155;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_int">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e4" edge="1" parent="1" source="n_int" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#ea580c;strokeWidth=2;fontSize=11;fontColor=#ea580c;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_appr" value="等待人工决策（可停任意久，状态已落盘）">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e5" edge="1" parent="1" source="n_appr" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#ea580c;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_invoke">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e6" edge="1" parent="1" source="n_invoke" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#16a34a;strokeWidth=2;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_tool2">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e7" edge="1" parent="1" source="n_tool2" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#334155;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" target="n_dec">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e8" edge="1" parent="1" source="n_dec" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#16a34a;strokeWidth=2;fontSize=11;fontColor=#16a34a;fontStyle=1;exitX=0;exitY=0.5;entryX=0.5;entryY=0;" target="n_ok" value="同意（可带 args 改写）">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="205" y="975" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e9" edge="1" parent="1" source="n_dec" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#dc2626;strokeWidth=2;fontSize=11;fontColor=#dc2626;fontStyle=1;exitX=1;exitY=0.5;entryX=0.5;entryY=0;" target="n_no" value="拒绝（带 reason）">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="615" y="975" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="e10" edge="1" parent="1" source="n_ok" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#16a34a;exitX=0.5;exitY=1;entryX=0.09;entryY=0;" target="n_merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e11" edge="1" parent="1" source="n_no" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#dc2626;exitX=0.5;exitY=1;entryX=0.91;entryY=0;" target="n_merge">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e12" edge="1" parent="1" source="n_merge" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#334155;fontSize=11;fontColor=#475569;exitX=1;exitY=0.5;entryX=0;entryY=0.5;" target="n_end" value="无 tool_calls">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e13" edge="1" parent="1" source="n_merge" style="edgeStyle=orthogonalEdgeStyle;html=1;endArrow=classic;strokeColor=#16a34a;strokeWidth=1.5;fontSize=11;fontColor=#16a34a;exitX=0;exitY=0.5;entryX=0;entryY=0.5;" target="n_llm" value="闭环：回到 llm_node 再推理（若再次发起 tool_calls → 重新进入 ★ 审批）">
+          <mxGeometry relative="1" x="-0.0058" y="20" as="geometry">
+            <mxPoint as="offset" />
+            <Array as="points">
+              <mxPoint x="30" y="1217" />
+              <mxPoint x="30" y="175" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
