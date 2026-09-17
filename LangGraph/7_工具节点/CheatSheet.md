@@ -344,20 +344,17 @@ def review_tool_call(request: ToolCallRequest, execute) -> ToolMessage | ...:
     request.override(tool_call=new_tc)     # 不可变替换，返回新 request
 ```
 
-### 7.3 完整实现（简易版，两场景实测全过：批准/拒绝）
+### 7.3 完整实现（简易版，与 `4_wrap_tool_call-工具审批.ipynb` 对齐）
 
-恢复值就是用户决策：`True` 放行，`False` 拒绝。
+恢复值就是用户决策：`True` 放行，`False` 拒绝。教学形态对所有工具调用审批；
+生产上可加审批名单过滤（名单外的工具直接 `execute(request)` 放行）。
 
 ```python
-REVIEW_TOOLS = {"get_weather"}          # 需要人工审批的工具名单
-
 def review_tool_call(request: ToolCallRequest, execute) -> ToolMessage | object:
     tc = request.tool_call
-    if tc["name"] not in REVIEW_TOOLS:
-        return execute(request)                     # 不在审批名单 → 放行
 
     approved = interrupt({                          # ===== 挂起等审批 =====
-        "action": tc["name"],
+        "name": tc["name"],
         "args": tc["args"],
         "tool_call_id": tc["id"],
     })
@@ -385,19 +382,15 @@ tool_node = ToolNode(tools, wrap_tool_call=review_tool_call,
 `request.override(tool_call=...)` 换参数且**保留原 tool_call_id**（对模型不可见的执行参数替换，
 与 2.3 的"同 id 覆盖历史消息"是两条不同的路）。
 
-**调用侧审批循环案例**（`4_wrap_tool_call处理审批逻辑.ipynb` 的模式，两场景实测全过）：
+**调用侧审批循环**（`4_wrap_tool_call-工具审批.ipynb` 的交互模式）：
+第一次 invoke 后若结果带 `__interrupt__`，从 `res["__interrupt__"][0].value` 取审批请求，
+人决策后 `graph.invoke(Command(resume=True/False), config)` 续跑，直到没有 `__interrupt__`：
 
 ```python
-def run_scenario(name: str, question: str, resume_value):
-    config = {"configurable": {"thread_id": name}}
-    res = graph.invoke({"messages": [HumanMessage(content=question)]}, config)
-    print("审批请求 ->", res["__interrupt__"][0].value)   # action + args + tool_call_id
-    res = graph.invoke(Command(resume=resume_value), config)  # 决策注入 interrupt() 返回值
-    for m in res["messages"][2:]:
-        print(type(m).__name__, "|", m.content if m.content else m.tool_calls)
-
-run_scenario("批准", "查一下上海的天气", True)
-run_scenario("拒绝", "查一下上海的天气", False)
+while res.get("__interrupt__"):
+    info = res["__interrupt__"][0].value
+    ans = input(f"允许 {info['name']}({info['args']})? (y/n) ").strip().lower() in ("y", "是")
+    res = graph.invoke(Command(resume=ans), config=config)
 ```
 
 ### 7.4 两个实测踩到的坑
@@ -433,7 +426,7 @@ run_scenario("拒绝", "查一下上海的天气", False)
 | 重试 | `execute` 抛瞬态异常时循环重调，加退避 | `execute()` 可多次调用（源码注释明确） |
 | 缓存/去重 | 按 `(name, args)` 查缓存，命中直接返回 | 跳过 `execute` |
 | 请求改写 | 注入外部服务凭证等系统参数，模型填什么都不算数 | `request.override(tool_call=...)` |
-| 动态权限 | 读 `request.state` 的用户身份，无权限直接回"无权限" ToolMessage | 跳过 `execute` |
+| 动态权限 | 读 `runtime.config["configurable"]` 里的登录角色，无权限直接回"无权限" ToolMessage | 跳过 `execute` |
 | 观测埋点 | 计时、记 tool 名/参数/结果长度 | 包裹 `execute` |
 | 结果后处理 | 截断超长输出、掩码敏感字段 | 改 `execute` 返回的 ToolMessage |
 
