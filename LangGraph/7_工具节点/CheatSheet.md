@@ -1,7 +1,7 @@
 # 工具节点 CheatSheet
 
 > 沉淀工具调用相关的提问与解答：模型接入（init_chat_model）、工具调用协议、工具节点审批、
-> ToolNode 预构建节点、tools_condition 路由、wrap_tool_call 审批钩子（对齐官方 HumanInTheLoopMiddleware 协议）。
+> ToolNode 预构建节点、tools_condition 路由、wrap_tool_call 审批钩子（简易版：批准/拒绝）。
 > 中断主题的问答见 [../6_中断/CheatSheet.md](../6_中断/CheatSheet.md)。流程可视化：[工具调用流程图.drawio](工具调用流程图.drawio)
 
 ## 一、模型接入（init_chat_model）
@@ -151,7 +151,7 @@ return Command(goto="tool_node", update={"messages": [fixed]})
 
 ## 三、工具节点内审批（多工具）
 
-> 手写版实现（教学透明）。同一需求的 ToolNode 钩子版（对齐官方协议）见第七节，两者演进关系：手写两阶段 → wrap_tool_call 钩子。
+> 手写版实现（教学透明）。同一需求的 ToolNode 钩子版见第七节，两者演进关系：手写两阶段 → wrap_tool_call 钩子。
 
 ### 3.1 标准写法：策略表 + 两阶段
 
@@ -311,7 +311,7 @@ def tools_condition(state, messages_key="messages") -> Literal["tools", "__end__
 的额外概念；且实际项目路由需求一变（加审批、限轮数、分流）就得换回手写。
 理解后当作标准模板的快捷方式即可。
 
-## 七、wrap_tool_call 审批钩子（对齐官方 HumanInTheLoopMiddleware）
+## 七、wrap_tool_call 审批钩子
 
 ### 7.1 官方调研结论：两条路线
 
@@ -321,7 +321,7 @@ def tools_condition(state, messages_key="messages") -> Literal["tools", "__end__
 | 自建图 + 钩子 | `ToolNode(tools, wrap_tool_call=review_tool_call)` | 教学/图结构需定制 |
 
 `HumanInTheLoopMiddleware` 源码（`langchain/agents/middleware/human_in_the_loop.py`）
-定义了权威的**四决策协议**，自建图钩子应对齐它：
+定义了**四决策协议**。简易自建钩子只需 approve/reject（见 7.3）；要对齐官方协议（支持编辑参数/代答）时参考下表：
 
 | 决策 | resume 值 | 官方语义 |
 |---|---|---|
@@ -344,43 +344,30 @@ def review_tool_call(request: ToolCallRequest, execute) -> ToolMessage | ...:
     request.override(tool_call=new_tc)     # 不可变替换，返回新 request
 ```
 
-### 7.3 完整实现（四场景实测全过：批准/编辑/拒绝/代答）
+### 7.3 完整实现（简易版，两场景实测全过：批准/拒绝）
+
+恢复值就是用户决策：`True` 放行，`False` 拒绝。
 
 ```python
-REVIEW_TOOLS: dict[str, list[str]] = {
-    "get_weather": ["approve", "edit", "reject", "respond"],   # 每种工具允许的决策
-}
+REVIEW_TOOLS = {"get_weather"}          # 需要人工审批的工具名单
 
 def review_tool_call(request: ToolCallRequest, execute) -> ToolMessage | object:
     tc = request.tool_call
-    allowed = REVIEW_TOOLS.get(tc["name"])
-    if allowed is None:
+    if tc["name"] not in REVIEW_TOOLS:
         return execute(request)                     # 不在审批名单 → 放行
 
-    decision = interrupt({                          # ===== 挂起等审批 =====
-        "action_request": {"action": tc["name"], "args": tc["args"]},
-        "allowed_decisions": allowed,
+    approved = interrupt({                          # ===== 挂起等审批 =====
+        "action": tc["name"],
+        "args": tc["args"],
         "tool_call_id": tc["id"],
     })
 
-    if decision["type"] == "approve" and "approve" in allowed:
-        return execute(request)
-    if decision["type"] == "edit" and "edit" in allowed:      # 官方语义：保留 id
-        edited = decision["edited_action"]
-        new_tc = {**tc, "name": edited["name"], "args": edited["args"]}
-        return execute(request.override(tool_call=new_tc))
-    if decision["type"] == "reject" and "reject" in allowed:
-        content = decision.get("message") or (
-            f"User rejected the tool call for `{tc['name']}` with id {tc['id']}. "
-            "The tool was not executed. Do not retry this tool call unless the user "
-            "explicitly requests it."
-        )
-        return ToolMessage(content=content, name=tc["name"],
-                           tool_call_id=tc["id"], status="error")
-    if decision["type"] == "respond" and "respond" in allowed:
-        return ToolMessage(content=decision["message"], name=tc["name"],
-                           tool_call_id=tc["id"], status="success")
-    raise ValueError(f"不支持的决策: {decision}，允许: {allowed}")
+    if approved:
+        return execute(request)                     # 批准：执行原工具
+    return ToolMessage(                             # 拒绝：不执行，回填错误信息
+        content=f"用户拒绝了 `{tc['name']}` 的调用，工具未执行。请不要重试，直接向用户说明。",
+        name=tc["name"], tool_call_id=tc["id"], status="error",
+    )
 
 
 def handle_errors(e: Exception) -> str:
@@ -393,38 +380,105 @@ tool_node = ToolNode(tools, wrap_tool_call=review_tool_call,
 # 图组装同第五节；compile(checkpointer=InMemorySaver())
 ```
 
-恢复侧：`graph.invoke(Command(resume={"type": "approve"}), config)`，四种决策值见 7.1 表。
+恢复侧：`graph.invoke(Command(resume=True/False), config)`。
+需要编辑参数/代答等更细决策语义时，按 7.1 官方协议扩展——edit 的关键是
+`request.override(tool_call=...)` 换参数且**保留原 tool_call_id**（对模型不可见的执行参数替换，
+与 2.3 的"同 id 覆盖历史消息"是两条不同的路）。
 
-**调用侧审批循环案例**（`4_wrap_tool_call处理审批逻辑.ipynb` 的模式，四场景实测全过）：
+**调用侧审批循环案例**（`4_wrap_tool_call处理审批逻辑.ipynb` 的模式，两场景实测全过）：
 
 ```python
 def run_scenario(name: str, question: str, resume_value):
     config = {"configurable": {"thread_id": name}}
     res = graph.invoke({"messages": [HumanMessage(content=question)]}, config)
-    print("审批请求 ->", res["__interrupt__"][0].value)   # action_request + allowed_decisions
-    res = graph.invoke(Command(resume=resume_value), config)  # 决策注入，钩子按协议处理
+    print("审批请求 ->", res["__interrupt__"][0].value)   # action + args + tool_call_id
+    res = graph.invoke(Command(resume=resume_value), config)  # 决策注入 interrupt() 返回值
     for m in res["messages"][2:]:
         print(type(m).__name__, "|", m.content if m.content else m.tool_calls)
 
-run_scenario("批准", "查一下上海的天气", {"type": "approve"})
-run_scenario("编辑", "查一下上海的天气",
-             {"type": "edit", "edited_action": {"name": "get_weather", "args": {"city": "北京"}}})
-run_scenario("拒绝", "查一下上海的天气", {"type": "reject"})
-run_scenario("代答", "查一下上海的天气",
-             {"type": "respond", "message": "天气服务正在维护，请直接告诉用户：暂时无法查询"})
+run_scenario("批准", "查一下上海的天气", True)
+run_scenario("拒绝", "查一下上海的天气", False)
 ```
 
 ### 7.4 两个实测踩到的坑
 
-**坑 1：`handle_tool_errors=True` 会吞掉 `GraphInterrupt`。** 钩子里的 `interrupt()`
+**坑 1：钩子路径下 `handle_tool_errors=True` 会吞掉 `GraphInterrupt`。** 钩子里的 `interrupt()`
 抛出的中断被当成工具异常包成 `Error: GraphInterrupt(...)` 的 ToolMessage 回给模型，
-审批直接失效（模型反而替它道歉）。必须用自定义 handler 把 `GraphInterrupt` `raise` 放行（见 7.3）。
+审批直接失效（模型反而替它道歉）。源码原因：工具体路径（`_execute_tool_sync`）在
+`except Exception` 前有 `except GraphBubbleUp: raise` 保护，官方已处理；但 **`wrap_tool_call`
+钩子路径（`_run_one`）只有 `except Exception`**，中断会进 handler。两种安全配置（实测）：
+
+- **不传 `handle_tool_errors`**——官方默认 handler（`_default_handle_tool_errors`）对非 `ToolInvocationError` 一律 `raise`，中断天然放行；
+- 自定义宽签名 handler 内 `raise` 放行 `GraphInterrupt`（见 7.3 的 `handle_errors`）。
+
+注意：窄签名 handler（如 `e: ValueError`）在钩子路径**不做类型过滤**（`_infer_handled_types`
+只对工具体路径生效），照样吞中断。
 
 **坑 2：恢复必须挂 checkpointer。** `Command(resume=...)` 没有 checkpointer 直接
 `RuntimeError: Cannot use Command(resume=...) without checkpointer`。生产换 `PostgresSaver`。
 
 ### 7.5 实测行为补充
 
-- 官方 reject 默认文案能明显降低模型盲目重试，**但不保证**——拒绝场景模型仍说"我可以再次尝试"，只是没有真的再调工具；
-- edit 场景模型会发现"我请求的是上海，返回的却是北京"——参数确实被换了，模型如实报告（好的行为）；
-- 与第四节三种位置的对应：`wrap_tool_call` 属于"工具节点内"位置的官方化形态，兼具 ② 的内聚和钩子的纪律性。
+- 拒绝文案里写明"不要重试"能明显降低模型盲目重试，**但不保证**——拒绝场景模型仍说"我可以再次尝试"，只是没有真的再调工具；
+- 与第四节三种位置的对应：`wrap_tool_call` 属于"工具节点内"位置，兼具 ② 的内聚和钩子的纪律性。
+
+### 7.6 除审批外的高频场景（Q：wrap_tool_call 还能干什么？）
+
+官方 docstring 定位：*"Enables retries, caching, request modification, and control flow"*。
+审批只是"不调 execute"的特例，钩子本质是**每次工具调用的统一拦截层**：
+
+| 场景 | 钩子里的做法 | 关键 API |
+|---|---|---|
+| 人工审批（见 7.3） | `interrupt()` 挂起，按决策放行/拒绝 | 不调 `execute` |
+| 重试 | `execute` 抛瞬态异常时循环重调，加退避 | `execute()` 可多次调用（源码注释明确） |
+| 缓存/去重 | 按 `(name, args)` 查缓存，命中直接返回 | 跳过 `execute` |
+| 请求改写 | 注入外部服务凭证等系统参数，模型填什么都不算数 | `request.override(tool_call=...)` |
+| 动态权限 | 读 `request.state` 的用户身份，无权限直接回"无权限" ToolMessage | 跳过 `execute` |
+| 观测埋点 | 计时、记 tool 名/参数/结果长度 | 包裹 `execute` |
+| 结果后处理 | 截断超长输出、掩码敏感字段 | 改 `execute` 返回的 ToolMessage |
+
+重试骨架（实测：偶发失败第 3 次成功返回 success；一直失败回填 `status="error"` 文案）：
+
+```python
+def with_retry(request: ToolCallRequest, execute, retries: int = 3):
+    """失败自动重试，重试次数用尽后把错误回填给模型"""
+    for i in range(retries):
+        try:
+            return execute(request)
+        except Exception as e:
+            err = e
+    tc = request.tool_call
+    return ToolMessage(content=f"重试 {retries} 次仍失败: {err}",
+                       name=tc["name"], tool_call_id=tc["id"], status="error")
+```
+
+请求改写·契合案例——**API 密钥注入**（实测：模型正常拿到天气，密钥全程未出现在任何消息里）。
+生产里最普遍：凡调外部 API 的工具都要认证，密钥不能进对话历史（日志、checkpoint、
+可能被 prompt 注入诱导输出）；一个钩子管全部外部工具：
+
+```python
+@tool
+def query_weather(city: str, api_key: str) -> str:
+    """查询城市天气（api_key 由系统统一注入，模型无需填写）"""
+    return f"{city}：晴，25°C"           # 认证交给网关，工具只写业务
+
+
+def inject_api_key(request: ToolCallRequest, execute):
+    tc = request.tool_call
+    new_tc = {**tc, "args": {**tc["args"], "api_key": os.environ["WEATHER_API_KEY"]}}
+    return execute(request.override(tool_call=new_tc))
+
+tool_node = ToolNode(tools, wrap_tool_call=inject_api_key)   # 所有外部工具共用
+```
+
+坑：`Annotated[str, InjectedToolArg]` 不适合钩子注入——它的语义是"由框架注入、
+不接受 tool_call 传值"，钩子塞进 args 的值会被过滤，直接报 `Field required`。
+就用普通参数 + 钩子强制覆盖。
+
+**多钩子聚合**：`wrap_tool_call` 只接受单个钩子，叠加多个关注点两条路
+（完整案例见 `11_wrap_tool_call-多hook聚合.ipynb`）：
+- 自建图：自制 `compose(*hooks)` 洋葱组合（先列的在外层）；
+- `create_agent(middleware=[M1(), M2()])`：官方自动组合（官方 `_chain_tool_call_wrappers`，先定义 = 外层），
+  每层自带 traceable span。成熟项目（deer-flow、deepagents）均走 middleware 路线。
+
+一句话：凡是要对"所有工具调用"统一做的事（观测、限流、缓存、重试、改写）都放钩子，不用逐个改工具。
