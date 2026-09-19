@@ -36,9 +36,9 @@
   - 场景：生产 UI 边流式输出 token 边弹审批框，不能靠一次 invoke 拿结果
   - 实现逻辑：`graph.stream(..., stream_mode="updates")` 返回的 chunk 里带 `__interrupt__` 信息驱动前端弹窗，用户决策后 `Command(resume=...)` 继续流式执行
 
-- [ ] **子图中断传播**
+- [x] **子图中断传播**（已覆盖：`9_子图/03_checkpointer与中断传播.ipynb`，整节实测；机制沉淀见 `9_子图/CheatSheet.md` 第三节）
   - 场景：多 agent 场景——子图/子 agent 里 interrupt，暂停要传导到父图统一处理
-  - 实现逻辑：子图节点的 interrupt 会以 `GraphInterrupt` 冒泡到父图挂起；多个子图并行中断时，恢复值按 interrupt id 组成 dict 映射（与第 2 节同构）
+  - 实现逻辑：子图内 `interrupt()` 冒泡到顶层 `__interrupt__`，`Command(resume=...)` 的值送回子图内 `interrupt()` 返回值；1.2.11 实测"直接作节点"与"节点内 invoke"两种集成方式均支持；resume 后父图节点从头重跑
 
 ## 建议实施顺序
 
