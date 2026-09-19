@@ -344,7 +344,7 @@ def review_tool_call(request: ToolCallRequest, execute) -> ToolMessage | ...:
     request.override(tool_call=new_tc)     # 不可变替换，返回新 request
 ```
 
-### 7.3 完整实现（简易版，与 `4_wrap_tool_call-工具审批.ipynb` 对齐）
+### 7.3 完整实现（简易版，与 `04_wrap_tool_call-工具审批.ipynb` 对齐）
 
 恢复值就是用户决策：`True` 放行，`False` 拒绝。教学形态对所有工具调用审批；
 生产上可加审批名单过滤（名单外的工具直接 `execute(request)` 放行）。
@@ -382,7 +382,7 @@ tool_node = ToolNode(tools, wrap_tool_call=review_tool_call,
 `request.override(tool_call=...)` 换参数且**保留原 tool_call_id**（对模型不可见的执行参数替换，
 与 2.3 的"同 id 覆盖历史消息"是两条不同的路）。
 
-**调用侧审批循环**（`4_wrap_tool_call-工具审批.ipynb` 的交互模式）：
+**调用侧审批循环**（`04_wrap_tool_call-工具审批.ipynb` 的交互模式）：
 第一次 invoke 后若结果带 `__interrupt__`，从 `res["__interrupt__"][0].value` 取审批请求，
 人决策后 `graph.invoke(Command(resume=True/False), config)` 续跑，直到没有 `__interrupt__`：
 
@@ -475,3 +475,5 @@ tool_node = ToolNode(tools, wrap_tool_call=inject_api_key)   # 所有外部工�
   每层自带 traceable span。成熟项目（deer-flow、deepagents）均走 middleware 路线。
 
 一句话：凡是要对"所有工具调用"统一做的事（观测、限流、缓存、重试、改写）都放钩子，不用逐个改工具。
+
+
